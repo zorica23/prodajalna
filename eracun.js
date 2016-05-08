@@ -26,7 +26,9 @@ streznik.use(
   })
 );
 
+
 var razmerje_usd_eur = 0.877039116;
+//var mushterijaID;
 
 function davcnaStopnja(izvajalec, zanr) {
   switch (izvajalec) {
@@ -151,8 +153,21 @@ streznik.post('/izpisiRacunBaza', function(zahteva, odgovor) {
   odgovor.end();
 })
 
+var zemiMushterija = function (mushterijaID, callback) {
+  pb.all('SELECT * FROM Customer WHERE Customer.CustomerId = ' + mushterijaID, function(napaka,vrstice) {
+    if(napaka) {
+      callback(false);
+    }
+    else {
+      callback(vrstice);
+    }
+  })
+}
+
+
 // Izpis računa v HTML predstavitvi ali izvorni XML obliki
 streznik.get('/izpisiRacun/:oblika', function(zahteva, odgovor) {
+  zemiMushterija(zahteva.session.mushterija, function(napaka,stranka) {
   pesmiIzKosarice(zahteva, function(pesmi) {
     if (!pesmi) {
       odgovor.sendStatus(500);
@@ -160,19 +175,23 @@ streznik.get('/izpisiRacun/:oblika', function(zahteva, odgovor) {
       odgovor.send("<p>V košarici nimate nobene pesmi, \
         zato računa ni mogoče pripraviti!</p>");
     } else {
+      
       odgovor.setHeader('content-type', 'text/xml');
       odgovor.render('eslog', {
         vizualiziraj: zahteva.params.oblika == 'html' ? true : false,
-        postavkeRacuna: pesmi
-      })  
-    }
+        postavkeRacuna: pesmi,
+        narocnikRacuna: stranka[0]
+      })
+      }  
+    });
   })
 })
-
 // Privzeto izpiši račun v HTML obliki
 streznik.get('/izpisiRacun', function(zahteva, odgovor) {
   odgovor.redirect('/izpisiRacun/html')
 })
+
+
 
 // Vrni stranke iz podatkovne baze
 var vrniStranke = function(callback) {
@@ -233,12 +252,16 @@ streznik.post('/stranka', function(zahteva, odgovor) {
   var form = new formidable.IncomingForm();
   
   form.parse(zahteva, function (napaka1, polja, datoteke) {
+    zahteva.session.mushterija = parseInt(polja.seznamStrank);
+    //mushterijaID=parseInt(polja.seznamStrank);
     odgovor.redirect('/')
   });
 })
 
 // Odjava stranke
 streznik.post('/odjava', function(zahteva, odgovor) {
+   //zahteva.session.mushterija=undefined;
+   // mushterijaID=undefined;
     odgovor.redirect('/prijava') 
 })
 
